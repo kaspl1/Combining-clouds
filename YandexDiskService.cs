@@ -6,7 +6,7 @@ using System.Net.Http.Headers;
 using System.Threading.Tasks;
 using Newtonsoft.Json.Linq;
 using System.Net;
-
+//КЛАСС БЫЛ РЕАЛИЗОВАН БЕЗ ИСПОЛЬЗОВАНИЯ БИБЛИОТЕК ЯНДЕКСА ДЛЯ ВЗАИМОДЕЙСТВИЯ С API, РАДИ ПРАКТИКИ, ДАЛЕЕ БУДЕТ ПЕРЕДЕЛАНО
 namespace DISKUSING
 {
     public class YandexDiskService : IDiskService
@@ -19,14 +19,13 @@ namespace DISKUSING
             this.accessToken = accessToken;
             this.httpClient = httpClient;
         }
-
         public async Task<Stream> DownloadFileAsync(string yandexDiskPath)
         {
             if (string.IsNullOrEmpty(yandexDiskPath))
             {
                 throw new ArgumentException("yandexDiskPath cannot be null or empty", nameof(yandexDiskPath));
             }
-
+            //API Яндекса устроенно так, что сначало необходимо получить ссылку на скачивание, что собственно тут и происходи (переменная href). И только после этого скачать файл, используя полученную ссылку.
             try
             {
                 var request = new HttpRequestMessage(HttpMethod.Get, $"https://cloud-api.yandex.net/v1/disk/resources/download?path={Uri.EscapeDataString(yandexDiskPath)}");
@@ -110,7 +109,7 @@ namespace DISKUSING
         }
 
 
-
+        //Метод для конвертации потока бинарных данных в файл
         public async Task SaveFileFromStreamAsync(Stream stream, string localFilePath)
         {
             try
@@ -126,7 +125,7 @@ namespace DISKUSING
                 throw;
             }
         }
-
+        
         public async Task CreateDirectoryAsync(string yandexDiskPath)
         {
             if (string.IsNullOrEmpty(yandexDiskPath))
@@ -144,7 +143,7 @@ namespace DISKUSING
 
                 if (response.StatusCode == HttpStatusCode.Conflict)
                 {
-                    // Directory already exists
+                    // Директория уже существует
                     Console.WriteLine($"Directory already exists or conflict occurred: {yandexDiskPath}");
                 }
                 else

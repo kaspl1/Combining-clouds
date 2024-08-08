@@ -13,7 +13,7 @@ using System.Linq;
 public class GoogleDriveService : IDiskService
 {
     private readonly DriveService _driveService;
-
+    //Инициализация необходимых сервисов при помощи файла client_secret.json
     public GoogleDriveService(string clientSecretFilePath)
     {
         var credential = GetCredentials(clientSecretFilePath).Result;
@@ -73,7 +73,7 @@ public class GoogleDriveService : IDiskService
         // Создаем директории по заданному пути
         await GetOrCreateFoldersAsync(path.Trim('/').Split('/'));
     }
-
+    //Получает учетные данные для доступа к Google Drive.
     private async Task<UserCredential> GetCredentials(string clientSecretFilePath)
     {
         using (var stream = new FileStream(clientSecretFilePath, FileMode.Open, FileAccess.Read))
@@ -86,7 +86,7 @@ public class GoogleDriveService : IDiskService
                 CancellationToken.None);
         }
     }
-
+    //Метод для определение MIME-типа файлов на основе его расширения.(пока что присутствуют только самые популярные)
     private string GetMimeType(string filePath)
     {
         var extension = Path.GetExtension(filePath).ToLowerInvariant();
@@ -162,7 +162,7 @@ public class GoogleDriveService : IDiskService
 
         return mimeType;
     }
-
+    //Получает имя файла и ID родительской папки на основе пути.
     private async Task<(string fileName, string folderId)> GetFileNameAndParentFolderIdAsync(string path)
     {
         var parts = path.Trim('/').Split('/');
@@ -176,7 +176,7 @@ public class GoogleDriveService : IDiskService
 
         return (fileName, folderId);
     }
-
+    //Получает или создает папки по заданному пути.
     private async Task<string> GetOrCreateFoldersAsync(IEnumerable<string> folderNames)
     {
         string parentFolderId = null;
@@ -188,7 +188,7 @@ public class GoogleDriveService : IDiskService
 
         return parentFolderId;
     }
-
+    //Получает или создает папку с заданным именем.
     private async Task<string> GetOrCreateFolderAsync(string folderName, string parentFolderId)
     {
         var request = _driveService.Files.List();

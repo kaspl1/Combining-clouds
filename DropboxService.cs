@@ -19,7 +19,8 @@ public class DropboxService : IDiskService
     private readonly string appSecret;
     private readonly string redirectUri;
     private readonly string tokenFilePath = "dropbox_tokens.json";
-
+    //При создании сервера происходит авторизация токена, если файл dropbox_tokens.json, находится в директории проекта, то автоматизация не нужна.
+    //Иначе потребуется авторизировать клиент. (Далее будет реализованно удаление файла dropbox_tokens.json, при истечении срока действия токен, пока что это необходимо делать вручную)
     public DropboxService(string appSecret, string appKey, string redirectUri)
     {
         this.appKey = appKey;
@@ -41,14 +42,14 @@ public class DropboxService : IDiskService
         string authorizeUri = GetAuthorizeUri(appKey, redirectUri);
         Console.WriteLine($"Go to the following URL to authorize the application: {authorizeUri}");
 
-        // Open the authorization URL in the default web browser
+        // Переход по ссылке для авторизации
         System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
         {
             FileName = authorizeUri,
             UseShellExecute = true
         });
 
-        // Set up a local HTTP server to handle the redirect and extract the code
+        // Создание отдельного сервера для приема кода, необходимого для получения токена
         var httpServer = new DropBoxAuthorizationServer(redirectUri);
         httpServer.Start();
 
@@ -58,12 +59,12 @@ public class DropboxService : IDiskService
         await GetAccessTokenAsync(code);
         SaveTokens();
     }
-
+    //Метод для получения ссылки для авторизации
     private string GetAuthorizeUri(string appKey, string redirectUri)
     {
         return $"https://www.dropbox.com/oauth2/authorize?client_id={appKey}&response_type=code&redirect_uri={redirectUri}";
     }
-
+    //Метод для получения токена
     private async Task GetAccessTokenAsync(string code)
     {
         using (var httpClient = new HttpClient())
@@ -95,7 +96,7 @@ public class DropboxService : IDiskService
             _dropboxClient = new DropboxClient(accessToken);
         }
     }
-
+    //Метод для сохранения токенов в файл
     private void SaveTokens()
     {
         var tokens = new Dictionary<string, string>
@@ -106,7 +107,7 @@ public class DropboxService : IDiskService
 
         File.WriteAllText(tokenFilePath, JObject.FromObject(tokens).ToString());
     }
-
+    //Метод для загрузки токенов
     private bool LoadTokens()
     {
         if (File.Exists(tokenFilePath))
@@ -118,7 +119,6 @@ public class DropboxService : IDiskService
         }
         return false;
     }
-
     private async Task RefreshAccessTokenAsync()
     {
         if (string.IsNullOrEmpty(refreshToken))
@@ -165,7 +165,7 @@ public class DropboxService : IDiskService
         {
             throw new ArgumentException("File stream cannot be null and must be readable", nameof(fileStream));
         }
-
+        //Разделение полного пути на путь и имя файла
         var (fileName, folderPath) = await GetFileNameAndParentFolderPathAsync(onDiscPath);
         var uploadPath = FormatDropboxPath(folderPath, fileName);
 
@@ -175,7 +175,7 @@ public class DropboxService : IDiskService
             {
                 await CreateDirectoryAsync(folderPath);
             }
-
+            //Использование DropboxClient'а для загрузки потока переданного в метод
             var response = await _dropboxClient.Files.UploadAsync(
                 uploadPath,
                 WriteMode.Overwrite.Instance,
@@ -191,50 +191,39 @@ public class DropboxService : IDiskService
         }
     }
 
-
-
-
-
-
-
     public async Task<Stream> DownloadFileAsync(string onDiscPath)
     {
+        //Разделение полного пути на путь и имя файла
         var (fileName, folderPath) = await GetFileNameAndParentFolderPathAsync(onDiscPath);
         var downloadPath = FormatDropboxPath(folderPath, fileName);
         var encodedPath = EncodeToUnicodeEscape(downloadPath);
 
-        Console.WriteLine($"Downloading from path: {encodedPath}"); // Debug message
+        Console.WriteLine($"Downloading from path: {encodedPath}");
 
         try
         {
-            // Ensure DropboxClient is initialized
             if (_dropboxClient == null)
             {
                 throw new InvalidOperationException("DropboxClient is not initialized.");
             }
-
-            // Download the file from Dropbox
+            //Скачивание файла, копирования потока бинарных данных из ответа.
             var response = await _dropboxClient.Files.DownloadAsync(encodedPath);
-
-            // Create a MemoryStream to hold the file content
             var memoryStream = new MemoryStream();
-
-            // Get the content stream and copy to memory stream
             using (var contentStream = await response.GetContentAsStreamAsync())
             {
                 await contentStream.CopyToAsync(memoryStream);
             }
 
-            memoryStream.Position = 0; // Reset the stream position to the beginning
+            memoryStream.Position = 0; 
             return memoryStream;
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Exception: {ex.Message}"); // Debug message
+            Console.WriteLine($"Exception: {ex.Message}");
             throw new Exception("An error occurred while downloading the file.", ex);
         }
     }
-
+    //Метод для разделения полного пути на имя и директорию
     private  Task<(string fileName, string folderPath)> GetFileNameAndParentFolderPathAsync(string path)
     {
         var parts = path.Trim('/').Split('/');
@@ -248,7 +237,6 @@ public class DropboxService : IDiskService
 
         return  Task.FromResult((fileName, folderPath));
     }
-
     public async Task SaveFileFromStreamAsync(Stream stream, string localFilePath)
     {
         using (var fileStream = new FileStream(localFilePath, FileMode.Create, FileAccess.Write))
@@ -259,14 +247,12 @@ public class DropboxService : IDiskService
 
     private string FormatDropboxPath(string folderPath, string fileName)
     {
-        // Ensure the path starts with a slash and doesn't end with a slash
         var formattedPath ="/"+ $"/{folderPath.Trim('/').Trim('/')}/{fileName}".Trim('/');
         return formattedPath;
     }
-
+    //В связи с тем, что Dropbox API подразумевает передачу данных, через заголовоки, необходимо кодировать русские символы(например названия папок) в Unicode Escape.
     private string EncodeToUnicodeEscape(string path)
     {
-        // Encode the path in Unicode Escape format
         return Regex.Replace(path, @"[\u0080-\uFFFF]", m =>
         {
             return $"\\u{(int)m.Value[0]:X4}";

@@ -16,7 +16,7 @@ namespace DISKUSING
         private readonly DropboxService dropboxService;
         private readonly GoogleDriveService googleDriveService;
         private readonly YandexDiskService yandexDiskService;
-
+        //При создании объекта MainContorller происходит инициализация всех необходимых сервисов
         public MainController(string prefix)
         {
             httpClient = new HttpClient();
@@ -31,7 +31,7 @@ namespace DISKUSING
                 httpClient,
                 ConfigurationManager.AppSettings["YandexDiskAccessToken"]);
         }
-
+        //Запуск прослушивания HTTP запросов
         public async Task StartAsync()
         {
             httpListener.Start();
@@ -50,12 +50,12 @@ namespace DISKUSING
                 }
             }
         }
-
+        //Метод для обработки полученных запросов
         private async Task ProcessRequestAsync(HttpListenerContext context)
         {
             HttpListenerRequest request = context.Request;
             HttpListenerResponse response = context.Response;
-            string responseData = string.Empty; // Инициализация переменной
+            string responseData = string.Empty;
             byte[] buffer;
 
             try
@@ -90,7 +90,7 @@ namespace DISKUSING
                 response.Close();
             }
         }
-
+        //Метод для обработки GET запросов
         private async Task<string> HandleGetRequestAsync(HttpListenerRequest request)
         {
             string directoryPath = ConfigurationManager.AppSettings["DirectoryPathToDownload"];
@@ -101,7 +101,7 @@ namespace DISKUSING
             bool getFromDB = queryParams["getFromDB"] == "true";
             bool getFromGD = queryParams["getFromGD"] == "true";
             bool getFromYD = queryParams["getFromYD"] == "true";
-
+            //Последовательная переадресация запроса на необходимые сервисы
             if (getFromDB)
             {
                 responseMessage += await DownloadFileFromServiceAsync(dropboxService, path, directoryPath, "DB_", name);
@@ -117,7 +117,7 @@ namespace DISKUSING
 
             return responseMessage;
         }
-
+        //Метод для обработки POST запросов
         private async Task<string> HandlePostRequestAsync(HttpListenerRequest request)
         {
             string responseMessage = "POST request received\n";
@@ -131,7 +131,7 @@ namespace DISKUSING
             bool createInGD = queryParams["createInGD"] == "true";
             bool createInYD = queryParams["createInYD"] == "true";
 
-            // Handle folder creation
+            //Создание директорий на дисках
             if (createInDB)
             {
                 await CreateFolderInServiceAsync(dropboxService, path, "Dropbox");
@@ -144,11 +144,11 @@ namespace DISKUSING
             {
                 await CreateFolderInServiceAsync(yandexDiskService, path, "Yandex Disk");
             }
-
+            //Загрузка данных на диски
             using (var memoryStream = new MemoryStream())
             {
                 await request.InputStream.CopyToAsync(memoryStream);
-                memoryStream.Position = 0; // Reset the position to the beginning of the stream
+                memoryStream.Position = 0; 
 
                 if (postToDB)
                 {
@@ -168,7 +168,7 @@ namespace DISKUSING
 
             return responseMessage;
         }
-
+        //Мето для скачивания файла с дисков
         private async Task<string> DownloadFileFromServiceAsync(IDiskService service, string path, string directoryPath, string prefix, string name)
         {
             try
@@ -182,7 +182,7 @@ namespace DISKUSING
                 return $"An error occurred while downloading file from {prefix}: {ex.Message}\n";
             }
         }
-
+        //Метод для загрузки файла на диски
         private async Task<string> UploadFileToServiceAsync(IDiskService service, string path, MemoryStream fileStream, string name, string serviceName)
         {
             try
@@ -196,7 +196,7 @@ namespace DISKUSING
                 return $"An error occurred while uploading file to {serviceName}: {ex.Message}\n";
             }
         }
-
+        //Метод для создания директории на дисках
         private async Task CreateFolderInServiceAsync(IDiskService service, string path, string serviceName)
         {
             try
