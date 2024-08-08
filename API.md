@@ -11,7 +11,7 @@
 - `postToYD=true|false` — Загрузить файл на Yandex Disk.
 - `postToGD=true|false` — Загрузить файл на Google Drive.
 - `name=<filename>` — Имя файла.
-- `path=<cloud_path>` — Путь в облачном хранилище.
+- `path=<cloud_path>` — Путь в облачном хранилище(включая название файла).
 
 **Тело запроса:** Файл в бинарном формате.
 
